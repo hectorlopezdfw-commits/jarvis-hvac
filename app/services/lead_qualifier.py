@@ -4,8 +4,6 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from app.config import settings
-
 
 def normalize_service_type(service_type: str) -> str:
     return (service_type or "service").strip().lower()

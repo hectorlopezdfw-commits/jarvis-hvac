@@ -17,6 +17,13 @@ class Settings:
     openai_model: str = "gpt-4o-mini"
     default_service_area: str = "local"
     default_timezone: str = "America/Chicago"
+    business_name: str = "Your HVAC Company"
+    app_url: str = "http://localhost:8000"
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""
+    default_review_link: str = "https://www.google.com/maps"
+    review_request_message: str = "Thanks for choosing us! If you have a minute, could you leave us a quick review?"
 
 
 @lru_cache(maxsize=1)
@@ -36,6 +43,16 @@ def get_settings() -> Settings:
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         default_service_area=os.getenv("DEFAULT_SERVICE_AREA", "local"),
         default_timezone=os.getenv("DEFAULT_TIMEZONE", "America/Chicago"),
+        business_name=os.getenv("BUSINESS_NAME", "Your HVAC Company"),
+        app_url=os.getenv("APP_URL", "http://localhost:8000"),
+        twilio_account_sid=os.getenv("TWILIO_ACCOUNT_SID", ""),
+        twilio_auth_token=os.getenv("TWILIO_AUTH_TOKEN", ""),
+        twilio_from_number=os.getenv("TWILIO_FROM_NUMBER", ""),
+        default_review_link=os.getenv("DEFAULT_REVIEW_LINK", "https://www.google.com/maps"),
+        review_request_message=os.getenv(
+            "REVIEW_REQUEST_MESSAGE",
+            "Thanks for choosing us! If you have a minute, could you leave us a quick review?",
+        ),
     )
 
 
@@ -59,6 +76,16 @@ class LeadBooking(BaseModel):
     appointment_time: str
     technician_name: str | None = None
     notes: str | None = None
+
+
+class FollowUpRequest(BaseModel):
+    channel: str = "sms"
+    message: str | None = None
+
+
+class ReviewRequestPayload(BaseModel):
+    review_link: str | None = None
+    message: str | None = None
 
 
 class LeadResponse(BaseModel):

@@ -1,20 +1,18 @@
 from __future__ import annotations
 
+from fastapi.testclient import TestClient
+
 from app.main import app
 
 
 def test_health() -> None:
-    from fastapi.testclient import TestClient
-
     client = TestClient(app)
     response = client.get('/health')
     assert response.status_code == 200
     assert response.json()['status'] == 'ok'
 
 
-def test_lead_qualification() -> None:
-    from fastapi.testclient import TestClient
-
+def test_submit_lead() -> None:
     client = TestClient(app)
     payload = {
         'customer_name': 'Sarah Bell',
@@ -33,3 +31,12 @@ def test_lead_qualification() -> None:
     body = response.json()
     assert body['priority_label'] in {'high', 'critical'}
     assert body['status'] == 'new'
+
+
+def test_sales_offer_endpoint() -> None:
+    client = TestClient(app)
+    response = client.get('/api/sales-offer')
+    assert response.status_code == 200
+    data = response.json()
+    assert 'title' in data
+    assert 'pricing' in data
