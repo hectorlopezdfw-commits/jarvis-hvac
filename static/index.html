@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jarvis HVAC</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <h1>Jarvis HVAC</h1>
+          <p>Residential + commercial HVAC lead conversion engine</p>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="panel form-panel">
+          <h2>Capture a new lead</h2>
+          <form id="lead-form">
+            <div class="two-col">
+              <label>
+                Customer name
+                <input name="customer_name" required />
+              </label>
+              <label>
+                Phone
+                <input name="phone" required />
+              </label>
+            </div>
+
+            <div class="two-col">
+              <label>
+                Email
+                <input name="email" type="email" />
+              </label>
+              <label>
+                Service type
+                <select name="service_type" required>
+                  <option value="heating">Heating</option>
+                  <option value="cooling">Cooling</option>
+                  <option value="furnace">Furnace</option>
+                  <option value="ac">AC Repair</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="installation">Installation</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="two-col">
+              <label>
+                Property type
+                <select name="property_type" required>
+                  <option value="residential">Residential</option>
+                  <option value="commercial">Commercial</option>
+                </select>
+              </label>
+              <label>
+                Emergency?
+                <select name="emergency">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              Address
+              <input name="address" />
+            </label>
+
+            <div class="two-col">
+              <label>
+                Preferred date
+                <input name="preferred_date" type="datetime-local" />
+              </label>
+              <label>
+                Source
+                <select name="source">
+                  <option value="website">Website</option>
+                  <option value="google">Google</option>
+                  <option value="call">Call</option>
+                  <option value="text">Text</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              Notes
+              <textarea name="notes"></textarea>
+            </label>
+
+            <button type="submit">Submit lead</button>
+          </form>
+        </section>
+
+        <section class="panel metrics-panel">
+          <h2>Lead dashboard</h2>
+          <div id="dashboard" class="metrics"></div>
+          <div class="response-block">
+            <h3>AI qualification preview</h3>
+            <pre id="response-output">No lead submitted yet.</pre>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
