@@ -76,3 +76,18 @@ verified dispatcher preparation, independent owner approval, unknown outcome and
 receipt reconciliation. Reporting includes simulation-only response latency; real
 response time and staff time savings stay unknown, with real delivery/bookings zero.
 Provider accounts and verified production sign-in have not been configured.
+
+
+## Client ownership correction
+
+The user clarified that the business workspace is for HVAC clients; the product
+owner needs a separate administration area. Added a metadata-only operator console,
+company registry, per-company fixture memberships, client session selection and
+a suspension control that revokes existing client sessions. The operator role is
+excluded from operating tools, and its cookie cannot authorize client routes.
+
+Two fictional company datasets exercise separate lead, financial, consent and
+assistant-memory scopes. The client UI clears prior-company conversation and records
+on session changes. Seven additional tests bring the suite to 41 passing tests.
+Production identity remains deliberately unimplemented: public local demo selectors
+are not a credential boundary. No claim of completed production tenancy is made.

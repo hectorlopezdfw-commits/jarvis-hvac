@@ -9,6 +9,7 @@ from app.api.routes import router
 from app.pilot_api import router as pilot_router
 from app.assistant import router as assistant_router
 from app.supervised_api import router as supervised_router
+from app.platform_api import router as platform_router
 from app.config import settings
 from app.controls import WorkflowError
 from app.db.in_memory_store import scope
@@ -41,12 +42,19 @@ async def boundary(request: Request, call_next):
                 return JSONResponse({'detail':'Request too large'},status_code=413)
         except ValueError:
             return JSONResponse({'detail':'Invalid request size'},status_code=400)
-    public={'/api/session','/api/sales-offer','/api/sales-pitch'}
+    public={'/api/session','/api/sales-offer','/api/sales-pitch','/api/companies','/api/platform/session'}
     token=None
     if request.url.path.startswith('/api/') and request.url.path not in public:
         try:
-            with services() as (_, access):
-                ctx=access.resolve(request.cookies.get('jarvis_session',''))
+            with services() as (store, access):
+                is_platform=request.url.path.startswith('/api/platform/')
+                ctx=access.resolve(request.cookies.get('jarvis_admin_session' if is_platform else 'jarvis_session',''))
+                if is_platform:
+                    if ctx.role!='platform_admin' or ctx.tenant!='__platform__':
+                        raise WorkflowError('Operator session required')
+                else:
+                    if ctx.role=='platform_admin' or not store.db.execute('SELECT 1 FROM companies WHERE id=? AND enabled=1',(ctx.tenant,)).fetchone():
+                        raise WorkflowError('Client company unavailable')
             request.state.ctx=ctx
             # Existing lead mutations belong to intake/dispatch roles.
             if request.method=='POST' and (request.url.path.startswith('/api/leads') or request.url.path=='/api/ai/qualify') and ctx.role not in {'owner','dispatcher'}:
@@ -69,6 +77,7 @@ app.include_router(router)
 app.include_router(pilot_router)
 app.include_router(assistant_router)
 app.include_router(supervised_router)
+app.include_router(platform_router)
 static_dir=Path(__file__).resolve().parent.parent/'static'
 app.mount('/static',StaticFiles(directory=str(static_dir)),name='static')
 
@@ -86,3 +95,8 @@ def serve_demo():
 @app.get('/sales')
 def serve_sales_page():
     return FileResponse(static_dir/'landing.html')
+
+
+@app.get('/admin')
+def serve_platform_admin():
+    return FileResponse(static_dir/'admin.html')

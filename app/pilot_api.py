@@ -11,22 +11,26 @@ router = APIRouter(prefix='/api')
 
 class SessionRequest(BaseModel):
     actor: str
+    company_id: str="pilot-local"
 
 
 @router.post('/session')
 def session(payload: SessionRequest, request: Request, response: Response):
     if payload.actor not in STAFF:
         raise HTTPException(400,'Unknown pilot staff')
-    with services() as (_, access):
+    with services() as (store, access):
+        company=store.db.execute('SELECT * FROM companies WHERE id=? AND enabled=1 AND demo=1',(payload.company_id,)).fetchone()
+        if company is None:
+            raise HTTPException(403,'Demo company unavailable')
         old = request.cookies.get('jarvis_session')
         if old:
             try:
                 access.revoke(old)
             except WorkflowError:
                 pass
-        token = access.issue('pilot-local',payload.actor,3600)
+        token = access.issue(payload.company_id,payload.actor,3600)
     response.set_cookie('jarvis_session',token,httponly=True,samesite='strict',max_age=3600)
-    return {'actor':payload.actor,'role':STAFF[payload.actor], 'mode':'local pilot; simulated identity'}
+    return {'actor':payload.actor,'company_id':payload.company_id,'role':STAFF[payload.actor], 'mode':'local pilot; simulated identity'}
 
 
 @router.post('/logout')
@@ -41,7 +45,8 @@ def logout(request: Request, response: Response):
 def workspace(request: Request):
     with services() as (store,_):
         data = store.snapshot(request.state.ctx)
-    return {'actor':request.state.ctx.actor,'role':request.state.ctx.role,'operations':data,
+        company=dict(store.db.execute('SELECT * FROM companies WHERE id=?',(request.state.ctx.tenant,)).fetchone())
+    return {'actor':request.state.ctx.actor,'role':request.state.ctx.role,'company':company,'operations':data,
             'mode':'local pilot','messaging':'drafts only','scheduler':'requests only',
             'ai':'available on request; no autonomous actions'}
 

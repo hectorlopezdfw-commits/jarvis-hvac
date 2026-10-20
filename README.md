@@ -122,3 +122,36 @@ The suite now has **34 passing tests**. Metrics distinguish simulated outcomes
 from real messages/appointments (zero); staff time saved remains unknown. Identity
 is still simulated. Google Calendar and Twilio are suggested future adapters,
 not connected accounts. No provider account, phone number or paid plan was created.
+
+## Client product and operator administration
+
+The operating workspace belongs to each HVAC client. The separate `/admin` page
+is the platform operator's company-setup area. It lists only onboarding metadata,
+creates fictional company profiles with scoped fixture memberships, records future
+provider preferences, and pauses/enables workspaces. It does not expose client leads,
+messages, invoices or assistant conversations, and grants no support impersonation.
+Operator and client sessions use different cookies and different roles.
+
+Two fictional companies are included: **Demo · Cedar Air** and **Demo · Gulf Coast
+Mechanical**. The `app.seed_demo` command seeds only empty workspaces, without
+replacing existing records. Client context comes from its stored session and is
+rechecked against the enabled company on each request. Body, query and header
+company IDs cannot redirect protected actions to another tenant. Pausing a company
+revokes its client sessions; reenabling requires a fresh session.
+
+The client screen clears the prior company's records, question input and displayed
+assistant conversation on session changes. Pending reads use a generation check
+to avoid rendering old results after a switch. Persisted assistant memory, consent,
+provider simulation and finance controls remain company-scoped.
+
+**41 tests pass**, including seven new multi-company cases: lead and mutation
+isolation, finance/hold/event isolation, separate supervised queues, separate
+assistant memory for the same staff name, operator/client cookie separation,
+onboarding and suspension/revocation.
+
+Important: demo selectors can deliberately select any fictional company and role.
+They are a rehearsal tool, not verified real-person authentication. These tests prove
+scope enforcement for issued sessions, not production isolation against arbitrary
+users. Identity-provider integration, verified invitations, branch/resource grants,
+database-enforced isolation and explicit audited support-access grants remain live
+onboarding gates. No real company account or external provider connection is created.

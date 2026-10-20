@@ -9,7 +9,7 @@ from datetime import timedelta
 from .core import Context, WorkflowError, now
 
 ROLES = frozenset({'owner', 'dispatcher', 'technician', 'finance',
-                   'finance_reviewer', 'quality_reviewer', 'compliance_reviewer'})
+                   'finance_reviewer', 'quality_reviewer', 'compliance_reviewer', 'platform_admin'})
 
 
 class Access:
