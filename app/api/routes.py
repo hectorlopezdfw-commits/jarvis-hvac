@@ -51,6 +51,8 @@ def submit_lead(payload: LeadRequest) -> dict[str, Any]:
 def book(lead_id: str, payload: LeadBooking) -> dict[str, Any]:
     try:
         return book_lead(lead_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -59,6 +61,8 @@ def book(lead_id: str, payload: LeadBooking) -> dict[str, Any]:
 def follow_up(lead_id: str, payload: FollowUpRequest) -> dict[str, Any]:
     try:
         return send_lead_follow_up(lead_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -67,6 +71,8 @@ def follow_up(lead_id: str, payload: FollowUpRequest) -> dict[str, Any]:
 def review_request(lead_id: str, payload: ReviewRequestPayload) -> dict[str, Any]:
     try:
         return request_review_for_lead(lead_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

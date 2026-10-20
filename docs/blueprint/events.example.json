@@ -1,0 +1,26 @@
+[
+  {
+    "event_id": "00000000-0000-4000-8000-000000000001",
+    "tenant_id": "tenant_demo",
+    "branch_id": "branch_dfw_demo",
+    "event_type": "job.closeout.submitted",
+    "occurred_at": "2026-10-20T15:00:00Z",
+    "received_at": "2026-10-20T15:00:01Z",
+    "producer": "synthetic-example",
+    "aggregate_type": "job",
+    "aggregate_id": "job_demo_001",
+    "aggregate_version": 4,
+    "source_record_id": "synthetic-example",
+    "correlation_id": "synthetic-example",
+    "causation_id": null,
+    "idempotency_key": "synthetic-example",
+    "schema_version": "1.0",
+    "payload": {
+      "synthetic": true,
+      "evidence_ids": [
+        "evidence_demo_001"
+      ],
+      "missing_required_measurements": true
+    }
+  }
+]

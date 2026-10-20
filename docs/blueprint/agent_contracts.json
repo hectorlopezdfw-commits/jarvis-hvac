@@ -1,0 +1,373 @@
+{
+  "version": "1.0",
+  "as_of": "2026-10-20",
+  "status": "proposed specification, not deployed",
+  "agents": [
+    {
+      "id": "ceo",
+      "name": "CEO Agent",
+      "category": "executive",
+      "purpose": "Coordinate every category, operating priorities and owner decisions.",
+      "triggers": [
+        "daily.brief.due",
+        "exception.high_impact",
+        "workflow.overdue"
+      ],
+      "inputs": [
+        "verified KPI snapshots",
+        "agent proposals",
+        "capacity",
+        "customer commitments"
+      ],
+      "tools": [
+        "read_metrics",
+        "read_exception_queue",
+        "create_task",
+        "request_approval",
+        "delegate_workflow"
+      ],
+      "outputs": [
+        "daily operating brief",
+        "ranked exception queue",
+        "assigned actions"
+      ],
+      "limits": [
+        "Cannot override safety, compliance, finance or data holds",
+        "Cannot change its instructions, code, permissions or budget",
+        "Owner approves strategy and material commitments"
+      ],
+      "kpis": [
+        "overdue critical work",
+        "closed-loop task completion",
+        "realized contribution subject to service quality"
+      ]
+    },
+    {
+      "id": "cfo",
+      "name": "CFO Agent",
+      "category": "executive",
+      "purpose": "Independently check the financial effects of every agent proposal.",
+      "triggers": [
+        "proposal.financial_impact",
+        "cash.forecast.due",
+        "reconciliation.exception"
+      ],
+      "inputs": [
+        "accounting ledger",
+        "payments and settlements",
+        "approved costs",
+        "AR AP",
+        "agent action costs"
+      ],
+      "tools": [
+        "read_financials",
+        "calculate_margin",
+        "forecast_cash",
+        "reconcile_financials",
+        "place_financial_hold",
+        "request_approval"
+      ],
+      "outputs": [
+        "13-week cash forecast",
+        "margin and reconciliation exceptions",
+        "approve-within-policy or hold recommendation"
+      ],
+      "limits": [
+        "Cannot transfer money, change vendor banking or file taxes",
+        "Cannot approve its own exceptions",
+        "Cannot overrule technical or legal holds"
+      ],
+      "kpis": [
+        "cash-forecast error",
+        "unreconciled balance",
+        "reviewed margin exceptions"
+      ]
+    },
+    {
+      "id": "fin",
+      "name": "Finance Controller",
+      "category": "FIN",
+      "supervisor": "CFO",
+      "purpose": "Finance and profitability",
+      "triggers": [
+        "invoice.draft",
+        "job.closed",
+        "bill.received",
+        "daily.cash"
+      ],
+      "inputs": "Costs, time, invoice versions, tax profile, accounting and payment data",
+      "tools": [
+        "calculate_margin",
+        "draft_invoice",
+        "match_bill",
+        "create_task"
+      ],
+      "outputs": "Deterministic cost and margin checks, AR/AP exceptions and reconciled close forecast",
+      "limits": [
+        "Accountant approves tax rules, payroll, write-offs and ledger adjustments"
+      ],
+      "kpis": [
+        "Gross margin by job and quote-to-actual cost variance",
+        "Forecast error, overdue AR and projected cash trough",
+        "Hours to invoice and completed-unbilled value",
+        "Unassigned labor hours and payroll-to-job reconciliation",
+        "Duplicate-payment incidents and unclaimed vendor credits",
+        "Tax-exception backlog and reviewed invoice accuracy"
+      ]
+    },
+    {
+      "id": "rev",
+      "name": "Revenue Agent",
+      "category": "REV",
+      "supervisor": "CEO",
+      "purpose": "Lead intake and sales",
+      "triggers": [
+        "call.received",
+        "lead.created",
+        "quote.open"
+      ],
+      "inputs": "Service territory, capacity, customer history, consent and approved price book",
+      "tools": [
+        "lookup_customer",
+        "reserve_slot",
+        "draft_quote",
+        "propose_message"
+      ],
+      "outputs": "Qualified lead, approved quote draft, booking proposal and follow-up task",
+      "limits": [
+        "No invented slots, engineering claims, financing approval or unapproved discounts"
+      ],
+      "kpis": [
+        "Qualified lead response time and booking rate",
+        "Time to quote and accepted contribution per qualified estimate",
+        "Aged open quotes and incremental completed-job contribution",
+        "Completed replacement contribution and financing-related fallout"
+      ]
+    },
+    {
+      "id": "ops",
+      "name": "Dispatch Agent",
+      "category": "OPS",
+      "supervisor": "CEO",
+      "purpose": "Dispatch and resilience",
+      "triggers": [
+        "booking.requested",
+        "technician.delayed",
+        "weather.alert"
+      ],
+      "inputs": "Skill matrix, shifts, routes, parts and customer windows",
+      "tools": [
+        "read_capacity",
+        "reserve_slot",
+        "propose_dispatch",
+        "create_task"
+      ],
+      "outputs": "Feasible schedule and hazard-aware reschedule proposals",
+      "limits": [
+        "Customer promises and reassignment require configured authority; stop-work cannot be suppressed"
+      ],
+      "kpis": [
+        "On-time arrival and contribution per available field hour",
+        "Forecast error, backlog age and off-season booked utilization",
+        "Unplanned downtime and tools overdue for service",
+        "Unsafe assignment attempts and time to notify affected customers"
+      ]
+    },
+    {
+      "id": "peo",
+      "name": "Workforce Agent",
+      "category": "PEO",
+      "supervisor": "CEO",
+      "purpose": "Workforce and training",
+      "triggers": [
+        "employee.started",
+        "credential.expiring",
+        "qa.coaching"
+      ],
+      "inputs": "Verified skills, training, reviewed job QA and role requirements",
+      "tools": [
+        "search_approved_knowledge",
+        "draft_training",
+        "create_task"
+      ],
+      "outputs": "Training assignments and competency evidence",
+      "limits": [
+        "No autonomous hiring rejection, discipline, termination or payroll decisions"
+      ],
+      "kpis": [
+        "Time to demonstrated competence and avoidable escalation rate",
+        "Time to qualified hire and 90-day retention"
+      ]
+    },
+    {
+      "id": "qua",
+      "name": "Quality Agent",
+      "category": "QUA",
+      "supervisor": "CEO",
+      "purpose": "Technical quality and knowledge",
+      "triggers": [
+        "job.closeout.submitted",
+        "callback.created"
+      ],
+      "inputs": "Measurements, equipment identity, OEM revision, approved design and checklist",
+      "tools": [
+        "search_approved_knowledge",
+        "validate_closeout",
+        "place_quality_hold"
+      ],
+      "outputs": "Missing-evidence hold, cited knowledge response and callback review",
+      "limits": [
+        "No fabricated readings, remote physical-control actions or unlicensed sign-off"
+      ],
+      "kpis": [
+        "30-day callback rate and callback cost per completed job",
+        "Complete closeouts and minutes of office rework per job",
+        "Design-ready installs and first-pass inspection rate",
+        "Actionable alert precision and avoided failures validated by staff"
+      ]
+    },
+    {
+      "id": "com",
+      "name": "Compliance Agent",
+      "category": "COM",
+      "supervisor": "CEO and CFO",
+      "purpose": "Texas and federal compliance",
+      "triggers": [
+        "job.scope.changed",
+        "credential.changed",
+        "rule.review_due"
+      ],
+      "inputs": "Job jurisdiction, contractor scope, service type, rule version and consent",
+      "tools": [
+        "evaluate_rules",
+        "draft_permit_packet",
+        "place_compliance_hold"
+      ],
+      "outputs": "Applicable checklist, dated evidence and compliance exceptions",
+      "limits": [
+        "No automatic legal interpretation, rule publication, filing or bypass of credential holds"
+      ],
+      "kpis": [
+        "Applicable records completed and unresolved compliance exceptions",
+        "Expired credential assignments and overdue inspections",
+        "Messages blocked for missing consent and opt-out enforcement latency",
+        "Unsupported incentive claims and stale-source exceptions"
+      ]
+    },
+    {
+      "id": "dat",
+      "name": "Data Steward Agent",
+      "category": "DAT",
+      "supervisor": "CEO and CFO",
+      "purpose": "Data privacy and platform reliability",
+      "triggers": [
+        "connector.event",
+        "sync.failed",
+        "privacy.requested"
+      ],
+      "inputs": "Source IDs, signed events, access grants, retention and connector state",
+      "tools": [
+        "ingest_event",
+        "reconcile_records",
+        "open_incident",
+        "create_task"
+      ],
+      "outputs": "Normalized records, conflict queue, stale-data alarms and privacy tasks",
+      "limits": [
+        "No cross-tenant access, merging ambiguous people or deleting protected records autonomously"
+      ],
+      "kpis": [
+        "Reconciliation difference and critical-field completeness",
+        "Unauthorized-access incidents and access-review completion",
+        "Restore time, stale-data age and tested recovery success"
+      ]
+    },
+    {
+      "id": "sup",
+      "name": "Supply Agent",
+      "category": "SUP",
+      "supervisor": "CFO",
+      "purpose": "Supply inventory and warranty",
+      "triggers": [
+        "job.scheduled",
+        "stock.low",
+        "warranty.due"
+      ],
+      "inputs": "Verified parts, bins, supplier quote, equipment compatibility and warranty terms",
+      "tools": [
+        "read_stock",
+        "reserve_part",
+        "draft_po",
+        "draft_warranty_claim"
+      ],
+      "outputs": "Pick list, PO proposal, reorder and warranty packet",
+      "limits": [
+        "No speculative substitution or supplier payment; purchases obey approved limits"
+      ],
+      "kpis": [
+        "First-visit completion and parts-related reschedules",
+        "Stock accuracy, stockouts and dead-stock value",
+        "Approved warranty recovery and days to credit"
+      ]
+    },
+    {
+      "id": "cus",
+      "name": "Customer Success Agent",
+      "category": "CUS",
+      "supervisor": "CEO",
+      "purpose": "Customer care and maintenance",
+      "triggers": [
+        "job.completed",
+        "complaint.created",
+        "agreement.due"
+      ],
+      "inputs": "Entitlements, consent, service evidence and customer contact preference",
+      "tools": [
+        "draft_message",
+        "open_case",
+        "propose_agreement_visit"
+      ],
+      "outputs": "Service recovery case, honest review request and renewal proposal",
+      "limits": [
+        "No fabricated reviews, review gating, surprise renewals or complaint suppression"
+      ],
+      "kpis": [
+        "Renewal rate, promised visits delivered and plan contribution",
+        "Complaint resolution time and repeat complaint rate",
+        "Inbound status calls per job and failed-access visits",
+        "Repeat-customer rate and retained contribution"
+      ]
+    },
+    {
+      "id": "gro",
+      "name": "Growth Agent",
+      "category": "GRO",
+      "supervisor": "CEO and CFO",
+      "purpose": "Growth commercial and management",
+      "triggers": [
+        "weekly.review.due",
+        "contract.risk",
+        "campaign.review"
+      ],
+      "inputs": "Collected job contribution, capacity, channel attribution and commercial terms",
+      "tools": [
+        "read_metrics",
+        "draft_experiment",
+        "draft_change_request",
+        "create_task"
+      ],
+      "outputs": "Growth experiment, project-risk review and branch scenario",
+      "limits": [
+        "No spending increases, contract acceptance, acquisition or market expansion without approval"
+      ],
+      "kpis": [
+        "Contract contribution and SLA breaches",
+        "Unapproved change exposure and forecast cost to complete",
+        "Collected contribution after acquisition cost",
+        "Branch contribution and policy-exception rate",
+        "Owner interruptions and overdue high-impact tasks",
+        "Incremental contribution, cash risk and forecast accuracy"
+      ]
+    }
+  ]
+}

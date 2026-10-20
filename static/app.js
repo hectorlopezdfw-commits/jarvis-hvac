@@ -1,69 +1,17 @@
-const appDemo = {
-  async loadDashboard() {
-    const summary = await this.fetchJson('/api/dashboard');
-    const container = document.getElementById('dashboard');
-    const cards = [
-      { label: 'Total leads', value: summary.total_leads },
-      { label: 'Booked', value: summary.booked_leads },
-      { label: 'Emergency', value: summary.emergency_leads },
-      { label: 'Avg priority', value: summary.avg_priority },
-      { label: 'Open leads', value: summary.open_leads },
-    ];
-
-    container.innerHTML = cards
-      .map((card) => `
-        <div class="metric">
-          <span class="label">${card.label}</span>
-          <span class="value">${card.value}</span>
-        </div>
-      `)
-      .join('');
-  },
-
-  async fetchJson(url, options = {}) {
-    const response = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Request failed');
-    }
-
-    return response.json();
-  },
-
-  async qualifyLead(payload) {
-    const result = await this.fetchJson('/api/ai/qualify', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-    document.getElementById('response-output').textContent = JSON.stringify(result, null, 2);
-  },
-
-  async submitLead(event) {
-    event.preventDefault();
-    const form = new FormData(event.target);
-    const payload = Object.fromEntries(form.entries());
-    payload.emergency = payload.emergency === 'true';
-
-    try {
-      const result = await this.fetchJson('/api/leads', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      document.getElementById('response-output').textContent = JSON.stringify(result, null, 2);
-      await this.loadDashboard();
-      await this.qualifyLead(payload);
-    } catch (error) {
-      document.getElementById('response-output').textContent = `Error: ${error.message}`;
-    }
-  },
-};
-
-document.addEventListener('DOMContentLoaded', async () => {
-  const form = document.getElementById('lead-form');
-  form.addEventListener('submit', appDemo.submitLead.bind(appDemo));
-  await appDemo.loadDashboard();
-});
+const $=s=>document.querySelector(s);let state={leads:[],workspace:null,selected:null};
+const usd=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n/100);
+const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n};
+const note=text=>$('#feedback').textContent=text;
+function btn(text,fn){const b=el('button',text);b.type='button';b.onclick=fn;return b}
+async function api(path,body){const r=await fetch(path,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-Jarvis-Request':'1'},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(typeof data.detail==='string'?data.detail:'Check the submitted fields.');return data}
+async function mutate(path,body){try{const result=await api(path,body);await load();note('Saved. Workspace refreshed.');return result}catch(e){note(e.message)}}
+async function operation(action,parameters){return mutate('/api/operations',{action,parameters})}
+function metrics(target,items){$(target).replaceChildren(...items.map(([label,value])=>{const n=el('div',undefined,'metric');n.append(el('span',label),el('strong',String(value)));return n}))}
+async function load(){try{const [workspace,leads,summary]=await Promise.all([api('/api/workspace'),api('/api/leads'),api('/api/dashboard')]);state={...state,workspace,leads,summary};$('#workspace').hidden=false;$('#welcome').hidden=true;$('#logout').hidden=false;$('#staff').value=workspace.actor;$('#session').textContent='Switch session';render()}catch(e){$('#workspace').hidden=true;$('#welcome').hidden=false;$('#logout').hidden=true;note(e.message)}}
+function render(){const {leads,workspace:w,summary:s}=state;metrics('#metrics',[['Total inquiries',s.total_leads],['Open leads',s.open_leads],['Booking requests',leads.filter(l=>l.status==='booking_requested').length],['Completed services',leads.filter(l=>l.status==='completed').length]]);$('#lead-count').textContent=leads.length+' inquiries';$('#lead-list').replaceChildren();if(!leads.length)$('#lead-list').append(el('div','Your pipeline is empty. Capture a synthetic inquiry below to start.','empty'));for(const l of leads){const b=el('button',undefined,'lead'),name=el('div');name.append(el('strong',l.customer_name),el('small',l.service_type+' · '+l.property_type+' · '+l.source));b.append(name,el('span',l.status.replaceAll('_',' '),'tag '+(l.emergency?'amber':'neutral')));b.onclick=()=>{state.selected=l.id;renderDetail()};$('#lead-list').append(b)}$('#capture-panel').hidden=!['owner','dispatcher'].includes(w.role);$('#assistant-form').hidden=w.role!=='owner';renderDetail();renderOperations()}
+function renderDetail(){const l=state.leads.find(x=>x.id===state.selected);if(!l){$('#detail').replaceChildren(el('div','Select a lead to review its next steps.','empty'));return}const body=el('div',undefined,'panel-content');const title=el('div',undefined,'detail-title');title.append(el('h2',l.customer_name),el('span',l.priority_label+' priority','tag '+(l.emergency?'amber':'')));body.append(title,el('p',l.service_type+' · '+l.property_type),el('p',l.address||'Service address not captured'),el('p',l.notes||'No notes'));if(l.safety_hold)body.append(el('div','Human safety review required. No routine booking or sales sequence.','notice'));body.append(el('h3','Suggested response'),el('div',l.sms_response||l.recommended_reply,'bubble'));const actions=el('div',undefined,'actions'),can=['owner','dispatcher'].includes(state.workspace.role);if(can){if(['new','contacted'].includes(l.status))actions.append(btn('Draft follow-up',async()=>{const r=await mutate('/api/leads/'+l.id+'/follow-up',{channel:'sms'});if(r)note('Draft prepared. No message was sent.')}));if(l.status==='new')actions.append(btn('Mark contacted',()=>mutate('/api/leads/'+l.id+'/status',{status:'contacted'})));if(l.status==='booking_requested')actions.append(btn('Mark service completed',()=>mutate('/api/leads/'+l.id+'/status',{status:'completed'})));if(l.status==='completed'){actions.append(btn('Draft review request',async()=>{const r=await mutate('/api/leads/'+l.id+'/review-request',{});if(r)note('Review request drafted. No message was sent.')}));if(state.workspace.role==='owner')actions.append(btn(l.job_id?'View linked job':'Hand off to operations',async()=>{await mutate('/api/leads/'+l.id+'/handoff',{});showView('operations')}))}if(!['completed','lost'].includes(l.status))actions.append(btn('Mark lost',()=>mutate('/api/leads/'+l.id+'/status',{status:'lost'})))}body.append(actions);for(const [title,text] of [['Follow-up draft',l.follow_up_draft],['Review draft',l.review_request_draft]])if(text)body.append(el('h3',title),el('div',text,'bubble'));
+if(can&&!['completed','lost'].includes(l.status)&&!l.safety_hold){const form=el('form');form.append(el('h3','Request a booking'));const label=el('label','Preferred visit time (local)'),input=el('input');input.type='datetime-local';input.required=true;label.append(input);const submit=el('button','Save unconfirmed request','primary');form.append(label,submit,el('p','A scheduler must confirm capacity before any customer promise.'));form.onsubmit=e=>{e.preventDefault();const date=new Date(input.value);if(!Number.isNaN(date.getTime()))mutate('/api/leads/'+l.id+'/book',{appointment_time:date.toISOString()})};body.append(form)}$('#detail').replaceChildren(body)}
+function renderOperations(){const d=state.workspace.operations,role=state.workspace.role;const jobLabel=id=>{const lead=state.leads.find(l=>l.job_id===id);return lead?lead.customer_name+' · service job':'Service job '+(d.jobs.findIndex(j=>j.id===id)+1)};const paid=id=>d.payments.filter(p=>p.invoice===id).reduce((s,p)=>s+p.amount,0);metrics('#op-metrics',[['Linked jobs',d.jobs.length],['Open invoices',usd(d.invoices.reduce((s,i)=>s+i.total-paid(i.id),0))],['Pending approvals',d.proposals.filter(p=>!p.approver).length],['Active holds',d.holds.filter(h=>h.active).length]]);for(const id of ['#jobs','#proposals','#invoices','#audit'])$(id).replaceChildren();if(!d.jobs.length)$('#jobs').append(el('div','Complete a lead, then hand it off to operations from its detail card.','empty'));for(const j of d.jobs){const n=el('div',undefined,'record');n.append(el('h3',jobLabel(j.id)),el('span',j.state.replaceAll('_',' '),'tag neutral'));const holds=d.holds.filter(h=>h.job===j.id&&h.active);for(const h of holds)n.append(el('p',h.kind+' hold: '+h.reason));const a=el('div',undefined,'actions');if(role==='owner'&&j.state==='scheduled')a.append(btn('Submit synthetic evidence',()=>operation('submit_closeout',{job:j.id,evidence:['synthetic-closeout-'+j.id]})));const kind={quality_reviewer:'quality',compliance_reviewer:'compliance',finance_reviewer:'finance'}[role];if(kind&&j.state!=='paid'){const existing=holds.some(h=>h.kind===kind);a.append(btn(existing?'Release '+kind+' hold':'Place '+kind+' hold',()=>{const reason=prompt('Reviewed reason for this hold change:');if(reason)operation('set_hold',{job:j.id,kind,reason,active:!existing})}))}n.append(a);if(['owner','finance'].includes(role)&&j.state==='closeout_submitted'&&!d.invoices.some(i=>i.job===j.id)){const form=el('form'),fields={};form.append(el('h3','Draft invoice proposal (USD)'));const two=el('div',undefined,'two');for(const [key,label] of [['revenue','Revenue excluding tax'],['direct_cost','Direct costs'],['selling_cost','Other selling costs'],['tax','Reviewed tax amount']]){const l=el('label',label),input=el('input');input.type='number';input.min='0';input.max='10000000';input.step='0.01';input.required=true;l.append(input);two.append(l);fields[key]=input}form.append(two,el('button','Create proposal','primary'));form.onsubmit=e=>{e.preventDefault();const amounts={};for(const [key,input]of Object.entries(fields))amounts[key]=Math.round(Number(input.value)*100);operation('propose_invoice',{job:j.id,...amounts})};n.append(form)}$('#jobs').append(n)}
+const pending=d.proposals.filter(p=>!d.invoices.some(i=>i.proposal===p.id));if(!pending.length)$('#proposals').append(el('div','No open invoice proposals.','empty'));for(const p of pending){const b=JSON.parse(p.body),n=el('div',undefined,'record');n.append(el('h3',jobLabel(p.job)),el('p',usd(b.revenue+b.tax)+' total · '+usd(b.revenue-b.direct_cost-b.selling_cost)+' contribution'));const detail=el('details');detail.append(el('summary','Inspect approval packet'),el('pre',JSON.stringify(b,null,2)),el('p','Expires '+new Date(p.expires).toLocaleString()));n.append(detail);const a=el('div',undefined,'actions');if(!p.approver&&role==='finance_reviewer')a.append(btn('Approve exact proposal',()=>operation('approve',{pid:p.id})));else if(p.approver&&['owner','finance'].includes(role))a.append(btn('Create local invoice',()=>operation('execute_invoice',{pid:p.id})));else a.append(el('span',p.approver?'Approved · preparer can execute':'Independent finance approval required','tag neutral'));n.append(a);$('#proposals').append(n)}if(!d.invoices.length)$('#invoices').append(el('div','No invoices. Approved proposals appear here after execution.','empty'));for(const i of d.invoices){const n=el('div',undefined,'record'),balance=i.total-paid(i.id);n.append(el('h3',jobLabel(i.job)),el('p','Total '+usd(i.total)+' · Balance '+usd(balance)));if(balance>0&&role==='finance_reviewer'){const f=el('form'),label=el('label','Record synthetic payment (USD)'),amount=el('input'),reference=el('input');amount.type='number';amount.min='.01';amount.step='.01';amount.max=String(balance/100);amount.required=true;label.append(amount);reference.placeholder='Unique payment reference';reference.required=true;reference.setAttribute('aria-label','Payment reference');f.append(label,reference,el('button','Record payment'));f.onsubmit=e=>{e.preventDefault();operation('record_payment',{invoice:i.id,reference:reference.value,amount:Math.round(Number(amount.value)*100)})};n.append(f)}$('#invoices').append(n)}for(const e of d.events.slice(-12).reverse()){const n=el('div',undefined,'event');n.append(el('span',e.type.replaceAll('.',' · ')),el('small',e.actor));$('#audit').append(n)}}
+function showView(view){for(const key of ['leads','operations','plan'])$('#view-'+key).hidden=key!==view;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view))}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));$('#session').onclick=async()=>{try{await api('/api/session',{actor:$('#staff').value});await load();note('Pilot session active. Role permissions are enforced.')}catch(e){note(e.message)}};$('#logout').onclick=async()=>{await mutate('/api/logout',{});note('Signed out.')};$('#refresh').onclick=load;$('#lead-form').onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.target));data.emergency=data.emergency==='true';const result=await mutate('/api/leads',data);if(result){state.selected=result.id;renderDetail();e.target.reset()}};$('#assistant-form').onsubmit=async e=>{e.preventDefault();const q=$('#question').value.trim();if(!q)return;const button=e.target.querySelector('button');button.disabled=true;$('#conversation').append(el('div',q,'bubble user'));try{const result=await api('/api/assistant',{message:q});$('#conversation').append(el('div',result.answer,'bubble'));$('#question').value=''}catch(error){note(error.message)}finally{button.disabled=false}};load();

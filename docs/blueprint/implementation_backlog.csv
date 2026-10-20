@@ -1,0 +1,16 @@
+epic_id,phase,epic,acceptance_criteria
+E01,P0,Identity and tenant boundary,"A user from tenant A cannot read, search, export or act on tenant B records, including object storage and task logs."
+E02,P0,Data ingestion and record authority,An import with duplicate external IDs is idempotent; conflicting people/assets are queued for review; totals reconcile or writes remain disabled.
+E03,P0,Workflow policy and approvals,Changed parameters or source version invalidate an approval; expired permissions and budget holds block execution.
+E04,P0,Credential rules and consent,"Unknown jurisdiction, expired required credential or missing channel/purpose permission blocks the corresponding action with an actionable reason."
+E05,P1,Lead intake and safe transfer,Approved bilingual scripts capture structured intent; hazard scenarios route safely; transfer failure creates a visible staffed escalation.
+E06,P1,Booking and dispatch,Two concurrent requests cannot commit the same slot; upstream timeout reconciles before retry; false confirmation is prevented.
+E07,P1,Quotes and deterministic finance,Known cost/fee/discount fixtures produce exact approved totals; missing critical costs block quote release; signed quote version is preserved.
+E08,P1,Closeout and quality,Required evidence is enforced by job type; AI cannot populate absent measurements; callbacks link to original asset/job and cost.
+E09,P1,Invoice and collection,"Replay job.completed ten times produces at most one invoice; payments, fees, partial balances and credits reconcile to the ledger."
+E10,P1,Executive work queues,"Every CEO/CFO recommendation includes source, age, financial method, owner, deadline and next action; empty data never renders as zero risk."
+E11,P2,Supply stock and warranty,Reserved stock cannot be double-used; physical count differences need approval; submitted warranty and received credit remain distinct.
+E12,P2,Agreements and customer care,Entitlements and unserved visits persist through renewals; opt-out stops pending messages; honest review requests are not sentiment-gated.
+E13,P2,Workforce and coaching,"Role-based training cites approved material; no candidate rejection, pay change or disciplinary action can execute through the agent."
+E14,P3,Commercial projects and branches,PO/SLA/site rules are honored; unapproved scope changes cannot be billed as accepted work; branch data permissions hold.
+E15,P0-P3,Security reliability and evaluation,A backup restores within agreed objectives; injected prompt instructions cannot invoke tools; candidate releases fail closed on critical regressions.

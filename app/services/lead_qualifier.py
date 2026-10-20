@@ -62,7 +62,9 @@ def classify_lead(lead: dict[str, Any]) -> dict[str, Any]:
     score = _priority_score(service_type, property_type, emergency, notes)
     label = priority_label(score)
 
+    hazard = any(term in notes.lower() for term in ("gas smell", "smell gas", "carbon monoxide", "co alarm", "fire", "sparking"))
     payload = {
+        "safety_hold": hazard,
         "priority_score": score,
         "priority_label": label,
         "recommended_reply": build_recommended_reply(lead),
@@ -71,6 +73,8 @@ def classify_lead(lead: dict[str, Any]) -> dict[str, Any]:
         "created_at": lead.get("created_at") or datetime.now(timezone.utc).isoformat(),
         "service_type": service_type,
     }
+    if hazard:
+        payload["recommended_reply"] = "Possible immediate danger: move to a safe location and contact emergency services or the utility emergency line. Human safety review is required before routine scheduling."
     return payload
 
 
