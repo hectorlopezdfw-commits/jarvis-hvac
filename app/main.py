@@ -8,6 +8,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.api.routes import router
 from app.pilot_api import router as pilot_router
 from app.assistant import router as assistant_router
+from app.supervised_api import router as supervised_router
 from app.config import settings
 from app.controls import WorkflowError
 from app.db.in_memory_store import scope
@@ -67,6 +68,7 @@ async def boundary(request: Request, call_next):
 app.include_router(router)
 app.include_router(pilot_router)
 app.include_router(assistant_router)
+app.include_router(supervised_router)
 static_dir=Path(__file__).resolve().parent.parent/'static'
 app.mount('/static',StaticFiles(directory=str(static_dir)),name='static')
 

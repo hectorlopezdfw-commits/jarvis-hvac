@@ -60,3 +60,19 @@ live read-only AI answer and completed-lead handoff into operations. Mobile brow
 QA and real third-party integration tests remain unperformed. Dependencies were
 retained from the original repo with an explicit HTTP client compatibility pin;
 security/version modernization is a separate pre-production task.
+
+## Supervised workflow increment
+
+Added a test-provider queue for service SMS and one-technician, one-hour calendar
+visits. A different owner approves a dispatcher's exact packet. Permission state
+and evidence version are rechecked at execution, opt-out cancels queued contact
+messages, and a changed lead invalidates its packet. The simulation handles
+rejection, overlapping visits, expiry, replay and timeout-after-acceptance. Unknown
+writes require receipt reconciliation. Completion is no longer permitted directly
+from an unconfirmed booking request; simulated confirmation is explicitly labeled.
+
+The additional eight tests bring the suite to 34 passing tests. Browser walkthrough
+verified dispatcher preparation, independent owner approval, unknown outcome and
+receipt reconciliation. Reporting includes simulation-only response latency; real
+response time and staff time savings stay unknown, with real delivery/bookings zero.
+Provider accounts and verified production sign-in have not been configured.

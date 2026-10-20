@@ -57,7 +57,7 @@ def transition(lead_id: str, payload: Transition, request: Request):
     lead = lead_store.get(lead_id)
     if not lead:
         raise HTTPException(404,'Lead not found')
-    allowed = {'new':{'contacted','lost'},'contacted':{'lost'},'booking_requested':{'completed','lost'}}
+    allowed = {'new':{'contacted','lost'},'contacted':{'lost'},'booking_requested':{'lost'},'booking_confirmed_simulated':{'completed','lost'}}
     if payload.status not in allowed.get(lead['status'],set()):
         raise HTTPException(409,'Invalid lifecycle transition')
     return lead_store.update(lead_id,{'status':payload.status})

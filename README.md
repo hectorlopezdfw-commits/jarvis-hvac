@@ -95,3 +95,30 @@ created against a real account with these incomplete gates.
 
 See [the integration record](docs/INTEGRATION.md), [the copied blueprint](docs/blueprint/BLUEPRINT.md)
 and [the original README](docs/ORIGINAL_README.md) for provenance and remaining scope.
+
+## Supervised pilot simulation
+
+Open **Supervised pilot** after selecting a lead. Use **Dispatcher** to record
+synthetic service-SMS permission with evidence and prepare the exact message or
+booking packet. Switch to **Office owner** to review and approve. The requester
+cannot approve their own packet. Execution rechecks expiry, current lead state,
+permission version and simulated calendar capacity inside a database transaction.
+
+Booking requests now require simulated provider confirmation before the UI can
+record service completion. The result is explicitly `booking_confirmed_simulated`,
+never a real confirmed appointment. The simulated calendar models one technician
+and one-hour visits; cancellation/rescheduling and real capacity are not modeled.
+
+You can test normal acceptance, rejection or a timeout after provider acceptance.
+Unknown outcomes block replay until reconciliation reads the synthetic provider
+receipt. Replay returns one receipt and does not reserve a second visit. Opt-out
+cancels unexecuted messages across leads for the same phone; an already accepted
+unknown action stays uncertain until reconciled, without sending again. Recorded
+permission is pilot evidence, not a legal determination or a complete consent
+system. Marketing purposes, provider opt-out webhooks and contact normalization
+still require scoped implementation.
+
+The suite now has **34 passing tests**. Metrics distinguish simulated outcomes
+from real messages/appointments (zero); staff time saved remains unknown. Identity
+is still simulated. Google Calendar and Twilio are suggested future adapters,
+not connected accounts. No provider account, phone number or paid plan was created.

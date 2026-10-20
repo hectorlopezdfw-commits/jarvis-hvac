@@ -14,6 +14,14 @@ def create(owner):
     return result.json()['id']
 
 
+def confirm_simulated_booking(client,lead):
+    client.post('/api/session',json={'actor':'dispatcher'})
+    pid=client.post('/api/supervision/propose',json={'lead_id':lead,'kind':'booking'}).json()['id']
+    client.post('/api/session',json={'actor':'owner'})
+    assert client.post('/api/supervision/approve',json={'action_id':pid}).status_code==200
+    assert client.post('/api/supervision/execute',json={'action_id':pid}).status_code==200
+
+
 def test_health_and_sales(client):
     assert client.get('/health').status_code==200
     assert 'pricing' in client.get('/api/sales-offer').json()
@@ -52,6 +60,7 @@ def test_review_completion_gate_and_lifecycle(owner):
     assert owner.post(f'/api/leads/{lead}/status',json={'status':'completed'}).status_code==409
     future=(datetime.now(timezone.utc)+timedelta(days=1)).isoformat()
     owner.post(f'/api/leads/{lead}/book',json={'appointment_time':future})
+    confirm_simulated_booking(owner,lead)
     assert owner.post(f'/api/leads/{lead}/status',json={'status':'completed'}).status_code==200
     assert owner.post(f'/api/leads/{lead}/review-request',json={}).status_code==200
     assert owner.get(f'/api/leads/{lead}').json()['status']=='completed'
@@ -72,6 +81,7 @@ def test_linked_lead_to_cash_with_separate_roles(owner):
     assert owner.post(f'/api/leads/{lead}/handoff').status_code==409
     future=(datetime.now(timezone.utc)+timedelta(days=1)).isoformat()
     owner.post(f'/api/leads/{lead}/book',json={'appointment_time':future})
+    confirm_simulated_booking(owner,lead)
     owner.post(f'/api/leads/{lead}/status',json={'status':'completed'})
     job=owner.post(f'/api/leads/{lead}/handoff').json()['job_id']
     assert owner.post(f'/api/leads/{lead}/handoff').json()['job_id']==job

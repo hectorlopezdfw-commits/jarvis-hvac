@@ -50,7 +50,7 @@ def book_lead(lead_id: str, booking: LeadBooking) -> dict[str, Any]:
 
     if lead.get("safety_hold"):
         raise ValueError("Human safety review required; routine booking blocked")
-    if lead.get("status") in {"completed", "lost"}:
+    if lead.get("status") in {"completed", "lost", "booking_confirmed_simulated"}:
         raise ValueError("Closed lead cannot be booked")
     from datetime import datetime
     proposed = datetime.fromisoformat(booking.appointment_time.replace("Z", "+00:00"))
