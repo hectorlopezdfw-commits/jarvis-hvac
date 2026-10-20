@@ -1,137 +1,157 @@
-# Jarvis HVAC
+# Jarvis HVAC — unified local pilot
 
-Jarvis HVAC is a sales-ready lead conversion system for residential and commercial HVAC companies. It helps contractors answer inbound leads faster, book more jobs, recover missed calls, and request reviews automatically.
+This continues the original Jarvis HVAC GitHub project. The lead-conversion app
+is the main experience; completed leads connect to the approval and finance
+controls developed in the companion Texas HVAC developer pack.
 
-## Business value
+## Run
 
-Most HVAC companies lose revenue not because they lack demand, but because they miss or delay responses to leads.
+Requires Python 3.10+ (verified with 3.12):
 
-Jarvis solves that by combining:
-
-- instant lead response
-- structured qualification
-- appointment booking flow
-- follow-up reminders
-- review request automation
-- performance dashboard for lead conversion
-
-## Project status
-
-This repo is now positioned as a real business-facing MVP, not just a technical demo.
-
-## Running locally
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m app.seed_demo
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8766
 ```
 
-Then open:
+Open http://127.0.0.1:8766 and start the Office owner pilot session. The optional
+seed command adds three labeled synthetic inquiries only when the pipeline is
+empty. Local data persists at `data/jarvis.sqlite`; `JARVIS_DB` overrides the path.
+Stop the server with Ctrl-C. Keep the database private; it contains local records,
+sessions, approvals, audit events and assistant conversation memory.
 
-- http://localhost:8000/
-- http://localhost:8000/sales
+The authorized existing key is read from the parent workspace `.env.local` without
+copying it. A standalone checkout can use environment variables or its own ignored
+`.env`; `OPENAI_MODEL` overrides the original repo model default. Never add keys to
+Git, frontend code or Docker images. The key is used only by the Ask Jarvis endpoint.
 
-## Deployment
+## One connected experience
 
-This app is ready to be deployed to public hosting providers.
+- **Lead desk:** capture residential/commercial inquiries; original rule-based
+  qualification; priority and source tracking; booking requests; explicit recorded
+  contact/completion; follow-up and review drafts.
+- **Ask Jarvis:** real OpenAI-backed, read-only owner assistant with the last three
+  exchanges scoped to tenant/staff. Sends workspace counts and up to 30 sanitized
+  lead descriptions/states plus the question/history. Never executes tools.
+- **Operations & finance:** hand off a completed lead once; attach synthetic evidence;
+  draft invoice costs/tax in integer cents; require a different finance approver;
+  enforce independent quality/compliance/finance holds, source freshness and expiry;
+  execute one local invoice; record partial/full payments with reference deduplication.
+- **Build roadmap:** separates implemented local behavior, live-customer gates and
+  the broader operating-system expansion.
+- **Original sales page:** retained at `/sales` as historical product collateral.
+  Its pricing and product claims have not been validated as current/live capabilities.
 
-### Render
+## Pilot roles
 
-Create a new Web Service and point it to this repository.
+The staff selector is simulated local identity, not production authentication.
+Sessions are hashed at rest, HttpOnly and SameSite=Strict, expire after one hour,
+and are revoked when switching staff or signing out. Persisted membership determines
+permissions; request bodies cannot select a tenant or role. Membership administration
+is an internal library, not a public endpoint. All current staff belong to one fixed
+pilot tenant; persistence and controls also have tests for separate tenant scopes.
 
-Build command:
+- Office owner: lead workflow, completed-lead handoff, closeout fixture, invoice draft/execution, assistant.
+- Dispatcher: lead workflow; cannot perform finance operations.
+- Invoice preparer: invoice proposals and approved invoice execution.
+- Finance reviewer: separate approval, finance holds and payment recording.
+- Quality/compliance reviewer: place and release only their own category of hold.
 
-```bash
-pip install -r requirements.txt
+A scheduled request is **not** an authoritative appointment. A message draft is
+**not** a delivery. Recorded payment is **not** a processor settlement. Absent holds
+are **not** positive technical/compliance clearance. No real messages are sent even
+if Twilio credentials happen to exist. Keyword-based hazard detection is an incomplete
+triage aid, not a safety system; applicable scripts and routing require expert review.
+
+## Verification
+
+```sh
+.venv/bin/python -m pytest -q
 ```
 
-Start command:
+Integration coverage includes lead capture, honest draft state, appointment time
+validation, completion/review gates, hazard blocking, linked lead-to-payment flow,
+independent approval, invoice replay, tenant persistence, logout/revocation, origin/
+host checks and read-only AI memory using a mocked model. Live synthetic assistant
+request and desktop browser flow were also verified separately; tests do not call
+paid APIs. Additional control tests are retained from the original local core.
 
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
+## What still blocks production
 
-Environment variables:
+The app refuses `APP_ENV=production`. The original Render config is retained for
+reference and will intentionally fail this gate; do not use it to publish the pilot.
+The host allowlist permits loopback plus the testing host only. No public deployment,
+customer outreach, GitHub merge, SMS delivery or payment processing is implied.
 
-```bash
-APP_NAME=Jarvis HVAC
-APP_ENV=production
-PORT=10000
-BUSINESS_NAME=Your HVAC Company
-APP_URL=https://your-app-url.onrender.com
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-4o-mini
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_FROM_NUMBER=
-DEFAULT_REVIEW_LINK=https://www.google.com/maps
-```
+Before live use: verified identity/MFA; tenant/branch/resource grants; database-enforced
+isolation; consent/opt-out/suppression and reviewed safety/credential/jurisdiction
+rules; real scheduler capacity and confirmation; transport delivery/unknown-outcome
+reconciliation; positive QA/compliance sign-off; deterministic reviewed tax/price
+rules; accounting and settlements; backups/restore, audit retention and monitoring.
+The pilot API is not hardened against hostile concurrent or oversized streaming
+traffic. SQLite service file access remains a trusted boundary. No invoice may be
+created against a real account with these incomplete gates.
 
-### Railway or other providers
+See [the integration record](docs/INTEGRATION.md), [the copied blueprint](docs/blueprint/BLUEPRINT.md)
+and [the original README](docs/ORIGINAL_README.md) for provenance and remaining scope.
 
-Use the same runtime setup:
+## Supervised pilot simulation
 
-```bash
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
+Open **Supervised pilot** after selecting a lead. Use **Dispatcher** to record
+synthetic service-SMS permission with evidence and prepare the exact message or
+booking packet. Switch to **Office owner** to review and approve. The requester
+cannot approve their own packet. Execution rechecks expiry, current lead state,
+permission version and simulated calendar capacity inside a database transaction.
 
-## Core API endpoints
+Booking requests now require simulated provider confirmation before the UI can
+record service completion. The result is explicitly `booking_confirmed_simulated`,
+never a real confirmed appointment. The simulated calendar models one technician
+and one-hour visits; cancellation/rescheduling and real capacity are not modeled.
 
-- `GET /health`
-- `GET /api/dashboard`
-- `GET /api/leads`
-- `POST /api/leads`
-- `POST /api/leads/{lead_id}/book`
-- `POST /api/leads/{lead_id}/follow-up`
-- `POST /api/leads/{lead_id}/review-request`
-- `POST /api/ai/qualify`
-- `GET /api/sales-offer`
-- `GET /api/sales-pitch`
+You can test normal acceptance, rejection or a timeout after provider acceptance.
+Unknown outcomes block replay until reconciliation reads the synthetic provider
+receipt. Replay returns one receipt and does not reserve a second visit. Opt-out
+cancels unexecuted messages across leads for the same phone; an already accepted
+unknown action stays uncertain until reconciled, without sending again. Recorded
+permission is pilot evidence, not a legal determination or a complete consent
+system. Marketing purposes, provider opt-out webhooks and contact normalization
+still require scoped implementation.
 
-## Sales story
+The suite now has **34 passing tests**. Metrics distinguish simulated outcomes
+from real messages/appointments (zero); staff time saved remains unknown. Identity
+is still simulated. Google Calendar and Twilio are suggested future adapters,
+not connected accounts. No provider account, phone number or paid plan was created.
 
-Jarvis HVAC is designed for residential and commercial HVAC businesses that want to:
+## Client product and operator administration
 
-- respond faster to leads
-- capture more emergency calls
-- reduce missed opportunities
-- allocate follow-up automatically
-- collect more reviews
+The operating workspace belongs to each HVAC client. The separate `/admin` page
+is the platform operator's company-setup area. It lists only onboarding metadata,
+creates fictional company profiles with scoped fixture memberships, records future
+provider preferences, and pauses/enables workspaces. It does not expose client leads,
+messages, invoices or assistant conversations, and grants no support impersonation.
+Operator and client sessions use different cookies and different roles.
 
-## Offer
+Two fictional companies are included: **Demo · Cedar Air** and **Demo · Gulf Coast
+Mechanical**. The `app.seed_demo` command seeds only empty workspaces, without
+replacing existing records. Client context comes from its stored session and is
+rechecked against the enabled company on each request. Body, query and header
+company IDs cannot redirect protected actions to another tenant. Pausing a company
+revokes its client sessions; reenabling requires a fresh session.
 
-Starter package:
+The client screen clears the prior company's records, question input and displayed
+assistant conversation on session changes. Pending reads use a generation check
+to avoid rendering old results after a switch. Persisted assistant memory, consent,
+provider simulation and finance controls remain company-scoped.
 
-- $2,500 setup
-- $800–$1,500/month retainer
+**41 tests pass**, including seven new multi-company cases: lead and mutation
+isolation, finance/hold/event isolation, separate supervised queues, separate
+assistant memory for the same staff name, operator/client cookie separation,
+onboarding and suspension/revocation.
 
-Includes:
-
-- instant lead response
-- AI qualification
-- appointment booking
-- follow-up reminders
-- review requests
-- dashboard
-
-## Sales pitch
-
-“We help HVAC companies stop missing leads and book more jobs by responding instantly, qualifying service requests, booking appointments, following up with unbooked leads, and collecting Google reviews automatically.”
-
-## Files of interest
-
-- `app/main.py` — app entrypoint and public routes
-- `app/api/routes.py` — API routes
-- `app/services/lead_service.py` — lead workflow logic
-- `static/landing.html` — sales landing page
-- `static/index.html` — live demo interface
-- `docs/SALES_ONE_PAGER.md` — sales-focused summary
-- `docs/OUTREACH_SCRIPT.md` — outreach message for HVAC owners
-- `docs/DISCOVERY_CALL_SCRIPT.md` — discovery call script
-
-## Notes
-
-This repo intentionally prioritizes business utility and sales viability over deep internal complexity. It is structured to be a strong HVAC business-facing MVP that can later be expanded with live CRM integrations, Twilio automation, and real dispatch workflows.
+Important: demo selectors can deliberately select any fictional company and role.
+They are a rehearsal tool, not verified real-person authentication. These tests prove
+scope enforcement for issued sessions, not production isolation against arbitrary
+users. Identity-provider integration, verified invitations, branch/resource grants,
+database-enforced isolation and explicit audited support-access grants remain live
+onboarding gates. No real company account or external provider connection is created.

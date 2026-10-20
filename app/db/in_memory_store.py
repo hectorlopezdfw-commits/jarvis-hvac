@@ -1,39 +1,73 @@
-from __future__ import annotations
-
+"""Persistent, tenant-scoped successor to the original in-memory lead store."""
+from contextvars import ContextVar
+from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any
+import json
+import os
+from pathlib import Path
+import sqlite3
+from uuid import uuid4
+
+scope = ContextVar('lead_tenant', default=None)
+
+
+def db_path():
+    path = Path(os.environ.get('JARVIS_DB', str(Path(__file__).resolve().parents[2]/'data/jarvis.sqlite')))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return str(path)
 
 
 class InMemoryLeadStore:
-    def __init__(self) -> None:
-        self._leads: dict[str, dict[str, Any]] = {}
+    # Retain the import/interface for compatibility with the existing application.
+    @contextmanager
+    def connect(self):
+        connection = sqlite3.connect(db_path(), timeout=10)
+        connection.execute('CREATE TABLE IF NOT EXISTS leads(tenant TEXT NOT NULL,id TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(tenant,id))')
+        connection.execute('CREATE TABLE IF NOT EXISTS lead_audit(sequence INTEGER PRIMARY KEY AUTOINCREMENT,tenant TEXT NOT NULL,lead_id TEXT NOT NULL,kind TEXT NOT NULL,at TEXT NOT NULL)')
+        try:
+            with connection:
+                yield connection
+        finally:
+            connection.close()
 
-    def create(self, lead: dict[str, Any]) -> dict[str, Any]:
-        lead_id = lead.get("id") or f"lead-{len(self._leads) + 1:04d}"
-        lead["id"] = lead_id
-        if "created_at" not in lead:
-            lead["created_at"] = datetime.now(timezone.utc).isoformat()
-        if "status" not in lead:
-            lead["status"] = "new"
-        if "priority_score" not in lead:
-            lead["priority_score"] = 0
-        if "priority_label" not in lead:
-            lead["priority_label"] = "medium"
-        self._leads[lead_id] = lead
-        return dict(self._leads[lead_id])
+    def tenant(self):
+        tenant = scope.get()
+        if not tenant:
+            raise ValueError('Authenticated tenant required')
+        return tenant
 
-    def list(self) -> list[dict[str, Any]]:
-        return [dict(lead) for lead in self._leads.values()]
+    def create(self, lead):
+        tenant = self.tenant()
+        record = dict(lead)
+        record['id'] = 'lead-'+uuid4().hex[:16]
+        record.setdefault('created_at', datetime.now(timezone.utc).isoformat())
+        with self.connect() as connection:
+            connection.execute('INSERT INTO leads VALUES(?,?,?)', (tenant,record['id'],json.dumps(record)))
+            connection.execute('INSERT INTO lead_audit(tenant,lead_id,kind,at) VALUES(?,?,?,?)',(tenant,record['id'],'lead.created',record['created_at']))
+        return record
 
-    def get(self, lead_id: str) -> dict[str, Any] | None:
-        lead = self._leads.get(lead_id)
-        return dict(lead) if lead else None
+    def list(self):
+        with self.connect() as connection:
+            return [json.loads(r[0]) for r in connection.execute('SELECT body FROM leads WHERE tenant=? ORDER BY rowid DESC',(self.tenant(),))]
 
-    def update(self, lead_id: str, updates: dict[str, Any]) -> dict[str, Any]:
-        if lead_id not in self._leads:
-            raise KeyError(f"Lead {lead_id} not found")
-        self._leads[lead_id].update(updates)
-        return dict(self._leads[lead_id])
+    def get(self, lead_id):
+        with self.connect() as connection:
+            row = connection.execute('SELECT body FROM leads WHERE tenant=? AND id=?',(self.tenant(),lead_id)).fetchone()
+            return json.loads(row[0]) if row else None
+
+    def update(self, lead_id, updates):
+        tenant = self.tenant()
+        with self.connect() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            row = connection.execute('SELECT body FROM leads WHERE tenant=? AND id=?',(tenant,lead_id)).fetchone()
+            if row is None:
+                raise KeyError('Lead not found')
+            record = json.loads(row[0])
+            record.update(updates)
+            record['id'] = lead_id
+            connection.execute('UPDATE leads SET body=? WHERE tenant=? AND id=?',(json.dumps(record),tenant,lead_id))
+            connection.execute('INSERT INTO lead_audit(tenant,lead_id,kind,at) VALUES(?,?,?,?)',(tenant,lead_id,'lead.updated',datetime.now(timezone.utc).isoformat()))
+        return record
 
 
 lead_store = InMemoryLeadStore()

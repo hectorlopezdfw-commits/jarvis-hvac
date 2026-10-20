@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Proposed typed action envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "proposal_id",
+    "tenant_id",
+    "agent_id",
+    "action_type",
+    "resource_id",
+    "resource_version",
+    "requested_by",
+    "evidence_ids",
+    "evidence_snapshot_hash",
+    "policy_version",
+    "parameters",
+    "estimated_financial_impact",
+    "risk_class",
+    "required_approver_role",
+    "expires_at",
+    "idempotency_key",
+    "expected_postcondition"
+  ],
+  "properties": {
+    "proposal_id": {
+      "type": "string"
+    },
+    "tenant_id": {
+      "type": "string"
+    },
+    "agent_id": {
+      "enum": [
+        "ceo",
+        "cfo",
+        "fin",
+        "rev",
+        "ops",
+        "peo",
+        "qua",
+        "com",
+        "dat",
+        "sup",
+        "cus",
+        "gro"
+      ]
+    },
+    "action_type": {
+      "enum": [
+        "commit_booking",
+        "create_invoice",
+        "send_approved_message",
+        "draft_po",
+        "propose_dispatch",
+        "draft_quote",
+        "create_task"
+      ]
+    },
+    "resource_id": {
+      "type": "string"
+    },
+    "resource_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "requested_by": {
+      "type": "string"
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "evidence_snapshot_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policy_version": {
+      "type": "string"
+    },
+    "parameters": {
+      "type": "object"
+    },
+    "estimated_financial_impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currency",
+        "cost_minor",
+        "benefit_minor",
+        "confidence"
+      ],
+      "properties": {
+        "currency": {
+          "const": "USD"
+        },
+        "cost_minor": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "benefit_minor": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "risk_class": {
+      "enum": [
+        "internal",
+        "routine_external",
+        "financial",
+        "regulated",
+        "critical"
+      ]
+    },
+    "required_approver_role": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "expected_postcondition": {
+      "type": "object"
+    }
+  }
+}

@@ -218,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local pilot data and credentials
+data/
+.env.local
+
+.DS_Store

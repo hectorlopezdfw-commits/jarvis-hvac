@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 
 
 @dataclass(frozen=True)
@@ -32,6 +32,8 @@ def get_settings() -> Settings:
 
     from dotenv import load_dotenv
 
+    from pathlib import Path
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env.local", override=False)
     load_dotenv()
 
     return Settings(
@@ -60,8 +62,9 @@ settings = get_settings()
 
 
 class LeadRequest(BaseModel):
-    customer_name: str
-    phone: str
+    model_config = ConfigDict(extra="forbid")
+    customer_name: str = Field(min_length=1,max_length=120)
+    phone: str = Field(min_length=7,max_length=30)
     email: str | None = None
     service_type: str
     property_type: Literal["residential", "commercial"]
@@ -69,13 +72,13 @@ class LeadRequest(BaseModel):
     address: str | None = None
     preferred_date: str | None = None
     source: str = "website"
-    notes: str | None = None
+    notes: str | None = Field(default=None,max_length=2000)
 
 
 class LeadBooking(BaseModel):
     appointment_time: str
     technician_name: str | None = None
-    notes: str | None = None
+    notes: str | None = Field(default=None,max_length=2000)
 
 
 class FollowUpRequest(BaseModel):
