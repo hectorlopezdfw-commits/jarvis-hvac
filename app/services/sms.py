@@ -17,7 +17,7 @@ def build_missing_call_reply(lead: dict[str, Any]) -> str:
     )
 
 
-def send_sms(phone: str, message: str) -> dict[str, Any]:
+def send_sms(phone: str, message: str, *, timeout: float | None = None) -> dict[str, Any]:
     if not phone:
         return {"status": "skipped", "reason": "missing_phone_number"}
 
@@ -30,9 +30,13 @@ def send_sms(phone: str, message: str) -> dict[str, Any]:
         }
 
     try:
+        from twilio.http.http_client import TwilioHttpClient
         from twilio.rest import Client
 
-        client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+        client_kwargs: dict[str, Any] = {}
+        if timeout is not None:
+            client_kwargs["http_client"] = TwilioHttpClient(timeout=timeout)
+        client = Client(settings.twilio_account_sid, settings.twilio_auth_token, **client_kwargs)
         sent = client.messages.create(body=message, from_=settings.twilio_from_number, to=phone)
         return {
             "status": "sent",

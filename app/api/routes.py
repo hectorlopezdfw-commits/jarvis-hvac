@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import json
+import re
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from app.auth import (
     apply_session_cookie,
@@ -14,6 +18,17 @@ from app.auth import (
     session_token,
 )
 from app.config import FollowUpRequest, LeadBooking, LeadRequest, LoginRequest, ReviewRequestPayload
+from app.services.firstring import (
+    MAX_SIGNUP_BODY_BYTES,
+    SIGNUP_RATE_WINDOW_SECONDS,
+    FirstRingSignupRequest,
+    deliver_signup_alerts,
+    honeypot_filled,
+    ingest_firstring_signup,
+    ingest_firstring_signup_honeypot,
+    signup_rate_limiter,
+    stored_signups,
+)
 from app.services.lead_service import (
     book_lead,
     create_lead,
@@ -28,6 +43,44 @@ from app.services.lead_service import (
 )
 
 router = APIRouter(prefix="/api")
+
+_IP_TOKEN = re.compile(r"^[0-9A-Fa-f:.]+$")
+
+
+def client_ip(request: Request) -> str:
+    """First address in X-Forwarded-For (Render sends the visitor), else the socket peer."""
+    forwarded = request.headers.get("x-forwarded-for", "")
+    for part in forwarded.split(","):
+        candidate = part.strip()
+        if candidate and len(candidate) <= 64 and _IP_TOKEN.fullmatch(candidate):
+            return candidate
+    if request.client is not None and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+async def limit_signup_body(request: Request) -> None:
+    header = request.headers.get("content-length")
+    if header:
+        try:
+            declared = int(header)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid Content-Length") from None
+        if declared > MAX_SIGNUP_BODY_BYTES:
+            raise HTTPException(status_code=413, detail="Request body is too large")
+    body = await request.body()
+    if len(body) > MAX_SIGNUP_BODY_BYTES:
+        raise HTTPException(status_code=413, detail="Request body is too large")
+
+
+def limit_signup_rate(request: Request) -> None:
+    if signup_rate_limiter.allow(client_ip(request)):
+        return
+    raise HTTPException(
+        status_code=429,
+        detail="Too many sign-up attempts. Try again later.",
+        headers={"Retry-After": str(SIGNUP_RATE_WINDOW_SECONDS)},
+    )
 
 
 @router.post("/login")
@@ -123,3 +176,55 @@ def sales_offer() -> dict[str, Any]:
 @router.get("/sales-pitch")
 def sales_pitch() -> str:
     return get_sales_pitch()
+
+
+def _signup_validation_error(exc: ValidationError) -> RequestValidationError:
+    # Match FastAPI's body-parameter errors: loc starts with "body".
+    errors = []
+    for error in exc.errors():
+        item = dict(error)
+        item["loc"] = ("body", *item.get("loc", ()))
+        errors.append(item)
+    return RequestValidationError(errors)
+
+
+@router.post(
+    "/firstring/signup",
+    dependencies=[Depends(limit_signup_body), Depends(limit_signup_rate)],
+)
+async def submit_firstring_signup(request: Request, background_tasks: BackgroundTasks) -> dict[str, bool]:
+    """Store a FirstRing sign-up, then alert the owner.
+
+    A non-empty `website` honeypot returns ok and is discarded, including when
+    other fields are invalid, so a bot does not learn the validation rules.
+    Alerts run after the response is written and cannot change this result.
+    """
+    raw = await request.body()
+    try:
+        parsed = json.loads(raw) if raw else None
+    except json.JSONDecodeError as exc:
+        raise RequestValidationError(
+            [
+                {
+                    "type": "json_invalid",
+                    "loc": ("body",),
+                    "msg": "JSON decode error",
+                    "input": raw.decode("utf-8", errors="replace")[:200],
+                }
+            ]
+        ) from exc
+    if isinstance(parsed, dict) and honeypot_filled(parsed.get("website")):
+        ingest_firstring_signup_honeypot()
+        return {"ok": True}
+    try:
+        payload = FirstRingSignupRequest.model_validate(parsed)
+    except ValidationError as exc:
+        raise _signup_validation_error(exc) from exc
+    signup_id = ingest_firstring_signup(payload, client_ip(request))
+    background_tasks.add_task(deliver_signup_alerts, signup_id)
+    return {"ok": True}
+
+
+@router.get("/firstring/signups", dependencies=[Depends(require_dashboard_auth)])
+def list_firstring_signups() -> list[dict[str, Any]]:
+    return stored_signups()

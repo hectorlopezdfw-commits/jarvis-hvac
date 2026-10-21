@@ -102,6 +102,7 @@ def test_unset_password_locks_dashboard(monkeypatch) -> None:
     assert client.get('/api/session').json() == {'configured': False, 'authenticated': False}
     assert client.get('/api/dashboard').status_code == 401
     assert client.get('/api/leads').status_code == 401
+    assert client.get('/api/firstring/signups').status_code == 401
     login = client.post('/api/login', json={'password': 'test-password'})
     assert login.status_code == 503
     assert client.get('/health').status_code == 200
