@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.config import FollowUpRequest, LeadBooking, LeadRequest, ReviewRequestPayload
-from app.db.in_memory_store import lead_store
+from app.db.store import lead_store
 from app.services.crm import build_crm_summary
 from app.services.follow_up import send_follow_up
 from app.services.lead_qualifier import build_dashboard_payload, classify_lead, format_follow_up_text, normalize_phone

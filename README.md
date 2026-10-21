@@ -28,18 +28,58 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+Copy `.env.example` to `.env` and set `DASHBOARD_PASSWORD` to a password you choose. That password unlocks the demo dashboard and the lead-reading API. Leave it unset and those views stay locked. `POST /api/leads` still accepts public lead submissions.
+
 Then open:
 
 - http://localhost:8000/
 - http://localhost:8000/sales
 
+## Lead storage
+
+Leads are stored with SQLAlchemy. Set `DATABASE_URL` to use Postgres. When `DATABASE_URL` is unset, the app uses a SQLite file at `data/jarvis.db`. A `postgres://` or `postgresql://` URL is rewritten to the psycopg v3 driver automatically.
+
+On startup the app inserts 10 fictional Dallas-area HVAC leads (555 phone numbers) if those seed ids are not already present. Restarting does not duplicate them. A fresh database therefore shows a non-zero dashboard.
+
+Persistence caveats:
+
+- Render free web services have an ephemeral filesystem. SQLite data survives only as long as that disk does. A redeploy, restart, or free-tier spin-down can wipe the file, and Render does not offer a persistent disk on the free web plan. After a wipe, the sample leads are seeded again. Leads submitted since the last restart are not restored.
+- Point `DATABASE_URL` at Postgres when leads must survive restarts and redeploys. Render's free or trial Postgres expires and is deleted at the end of that window, so a database you mean to keep has to be on a plan that does not expire.
+
+## Dashboard login
+
+The demo dashboard and lead-reading API require one shared password from `DASHBOARD_PASSWORD`. Sign in from the demo page, or `POST /api/login` with `{"password": "..."}`. A matching password sets an HttpOnly session cookie. `POST /api/logout` clears it.
+
+These routes require that cookie:
+
+- `GET /api/dashboard`
+- `GET /api/leads`
+- `GET /api/leads/{lead_id}`
+- `POST /api/leads/{lead_id}/book`
+- `POST /api/leads/{lead_id}/follow-up`
+- `POST /api/leads/{lead_id}/review-request`
+
+These stay public:
+
+- `GET /health`
+- `GET /sales`
+- `GET /` (the page shell; lead counts load only after login)
+- `POST /api/leads`
+- `POST /api/ai/qualify`
+- `GET /api/sales-offer`
+- `GET /api/sales-pitch`
+
+If `DASHBOARD_PASSWORD` is unset or blank, login returns 503 and the protected routes return 401. No password is stored in the repo. Do not commit a real password.
+
+Phone numbers are stored as E.164. A US 10-digit number becomes `+1XXXXXXXXXX`. An 11-digit number that starts with `1` becomes `+1XXXXXXXXXX` as well, which is what Twilio expects.
+
 ## Deployment
 
-This app is ready to be deployed to public hosting providers.
+The live app is [https://jarvis-hvac.onrender.com](https://jarvis-hvac.onrender.com). Render redeploys this repo from `main`.
 
 ### Render
 
-Create a new Web Service and point it to this repository.
+`render.yaml` describes the web service.
 
 Build command:
 
@@ -60,14 +100,20 @@ APP_NAME=Jarvis HVAC
 APP_ENV=production
 PORT=10000
 BUSINESS_NAME=Your HVAC Company
-APP_URL=https://your-app-url.onrender.com
+APP_URL=https://jarvis-hvac.onrender.com
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_FROM_NUMBER=
 DEFAULT_REVIEW_LINK=https://www.google.com/maps
+DATABASE_URL=
+DASHBOARD_PASSWORD=
 ```
+
+Set `DASHBOARD_PASSWORD` in the Render dashboard (Environment). `render.yaml` declares it with `sync: false`, so blueprint deploys do not overwrite the value and the password is never committed. The dashboard and lead list stay locked until that variable is set.
+
+`DATABASE_URL` is also `sync: false`. Leave it empty to use SQLite on the instance disk, or paste a Postgres connection string. Read the persistence caveats above before relying on SQLite on the free plan.
 
 ### Railway or other providers
 
@@ -81,12 +127,16 @@ uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ## Core API endpoints
 
 - `GET /health`
-- `GET /api/dashboard`
-- `GET /api/leads`
-- `POST /api/leads`
-- `POST /api/leads/{lead_id}/book`
-- `POST /api/leads/{lead_id}/follow-up`
-- `POST /api/leads/{lead_id}/review-request`
+- `POST /api/login`
+- `POST /api/logout`
+- `GET /api/session`
+- `GET /api/dashboard` (login required)
+- `GET /api/leads` (login required)
+- `GET /api/leads/{lead_id}` (login required)
+- `POST /api/leads` (public)
+- `POST /api/leads/{lead_id}/book` (login required)
+- `POST /api/leads/{lead_id}/follow-up` (login required)
+- `POST /api/leads/{lead_id}/review-request` (login required)
 - `POST /api/ai/qualify`
 - `GET /api/sales-offer`
 - `GET /api/sales-pitch`
@@ -125,6 +175,9 @@ Includes:
 
 - `app/main.py` — app entrypoint and public routes
 - `app/api/routes.py` — API routes
+- `app/auth.py` — dashboard password check and session cookie
+- `app/db/store.py` — SQL lead store (`DATABASE_URL`, SQLite fallback)
+- `app/db/seed.py` — idempotent sample leads
 - `app/services/lead_service.py` — lead workflow logic
 - `static/landing.html` — sales landing page
 - `static/index.html` — live demo interface

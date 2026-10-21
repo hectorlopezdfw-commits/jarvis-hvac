@@ -28,3 +28,11 @@ services:
         value: ""
       - key: DEFAULT_REVIEW_LINK
         value: https://www.google.com/maps
+      # Optional external database. Leave blank to use the SQLite fallback.
+      # sync: false so a Postgres URL entered in the Render dashboard is not wiped by blueprint deploys.
+      - key: DATABASE_URL
+        sync: false
+      # Set this in the Render dashboard. The value is not stored in git.
+      # Until it is set, dashboard and lead-reading routes stay locked.
+      - key: DASHBOARD_PASSWORD
+        sync: false

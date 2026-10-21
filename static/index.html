@@ -97,7 +97,16 @@
 
         <section class="panel metrics-panel">
           <h2>Lead dashboard</h2>
-          <div id="dashboard" class="metrics"></div>
+          <form id="login-form" class="login-form">
+            <label>
+              Dashboard password
+              <input name="password" type="password" autocomplete="current-password" required />
+            </label>
+            <button type="submit">Unlock dashboard</button>
+            <p id="auth-message" class="auth-message">Lead data stays private until you sign in.</p>
+          </form>
+          <button id="logout-btn" class="logout-btn" type="button" hidden>Lock dashboard</button>
+          <div id="dashboard" class="metrics" hidden></div>
           <div class="response-block">
             <h3>AI qualification preview</h3>
             <pre id="response-output">No lead submitted yet.</pre>

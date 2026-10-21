@@ -40,3 +40,11 @@ def test_sales_offer_endpoint() -> None:
     data = response.json()
     assert 'title' in data
     assert 'pricing' in data
+
+
+def test_sales_page_book_demo_link() -> None:
+    client = TestClient(app)
+    response = client.get('/sales')
+    assert response.status_code == 200
+    assert 'Book a demo' in response.text
+    assert 'mailto:hector@thefirstring.com' in response.text

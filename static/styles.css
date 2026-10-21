@@ -106,6 +106,19 @@ button {
   font-weight: 700;
 }
 
+.auth-message {
+  color: #f0c674;
+  min-height: 1.2em;
+  margin: 0 0 8px;
+}
+
+button.logout-btn {
+  width: auto;
+  margin-bottom: 16px;
+  background: transparent;
+  border: 1px solid #2b405f;
+}
+
 .response-block pre {
   background: #08111b;
   border: 1px solid #283d58;

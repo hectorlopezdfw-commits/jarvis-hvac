@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -23,7 +24,11 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 @app.get("/health")
 def health_check() -> dict:
-    return {"status": "ok", "app": settings.app_name, "environment": settings.app_env}
+    payload = {"status": "ok", "app": settings.app_name, "environment": settings.app_env}
+    commit = os.getenv("RENDER_GIT_COMMIT", "").strip()
+    if commit:
+        payload["commit"] = commit
+    return payload
 
 
 @app.get("/")

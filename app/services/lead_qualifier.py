@@ -91,9 +91,19 @@ def build_dashboard_payload(leads: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def normalize_phone(value: str | None) -> str:
+    """Return an E.164 US number when the input is a 10-digit or leading-1 11-digit number."""
     if not value:
         return ""
-    digits = re.sub(r"\D+", "", value)
+    raw = value.strip()
+    digits = re.sub(r"\D+", "", raw)
+    if not digits:
+        return ""
+    if len(digits) == 10:
+        return f"+1{digits}"
+    if len(digits) == 11 and digits.startswith("1"):
+        return f"+{digits}"
+    if raw.startswith("+"):
+        return f"+{digits}"
     return digits
 
 

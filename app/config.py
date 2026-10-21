@@ -24,6 +24,8 @@ class Settings:
     twilio_from_number: str = ""
     default_review_link: str = "https://www.google.com/maps"
     review_request_message: str = "Thanks for choosing us! If you have a minute, could you leave us a quick review?"
+    database_url: str = ""
+    dashboard_password: str = ""
 
 
 @lru_cache(maxsize=1)
@@ -53,6 +55,8 @@ def get_settings() -> Settings:
             "REVIEW_REQUEST_MESSAGE",
             "Thanks for choosing us! If you have a minute, could you leave us a quick review?",
         ),
+        database_url=os.getenv("DATABASE_URL", ""),
+        dashboard_password=os.getenv("DASHBOARD_PASSWORD", ""),
     )
 
 
@@ -86,6 +90,10 @@ class FollowUpRequest(BaseModel):
 class ReviewRequestPayload(BaseModel):
     review_link: str | None = None
     message: str | None = None
+
+
+class LoginRequest(BaseModel):
+    password: str = ""
 
 
 class LeadResponse(BaseModel):
