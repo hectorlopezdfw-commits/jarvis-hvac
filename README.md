@@ -28,7 +28,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Copy `.env.example` to `.env` and set `DASHBOARD_PASSWORD` to a password you choose. That password unlocks the demo dashboard and the lead-reading API. Leave it unset and those views stay locked. `POST /api/leads` still accepts public lead submissions.
+Copy `.env.example` to `.env` and set `DASHBOARD_PASSWORD` to a password you choose. That password unlocks the demo dashboard, the lead-reading API, and `GET /api/firstring/signups`. Leave it unset and those views stay locked. `POST /api/leads` and `POST /api/firstring/signup` still accept public submissions.
 
 Then open:
 
@@ -46,6 +46,26 @@ Persistence caveats:
 - Render free web services have an ephemeral filesystem. SQLite data survives only as long as that disk does. A redeploy, restart, or free-tier spin-down can wipe the file, and Render does not offer a persistent disk on the free web plan. After a wipe, the sample leads are seeded again. Leads submitted since the last restart are not restored.
 - Point `DATABASE_URL` at Postgres when leads must survive restarts and redeploys. Render's free or trial Postgres expires and is deleted at the end of that window, so a database you mean to keep has to be on a plan that does not expire.
 
+FirstRing sign-ups are rows in the same database (`firstring_signups`). They follow the same SQLite and Postgres rules as leads.
+
+## FirstRing sign-ups
+
+`POST /api/firstring/signup` is the public intake for the firstringtx.com questionnaire. The body is JSON:
+
+- Required: `business_name`, `contact_name`, `phone`, `email`, `sms_consent`
+- Optional: `trade`, `service_area`, `team_size`, `monthly_calls`, `how_calls_answered_now`, `needs`, `challenges`, `plan_interest` (`Starter`, `Growth`, `Pro`, or `Not sure`), `best_time_to_call`, `language` (`en` or `es`)
+- `website` is a honeypot. It must be empty. A non-empty value returns `200 {"ok": true}` and is not stored.
+
+Phone numbers are normalized to E.164 the same way as leads. A valid submission returns `200 {"ok": true}`. Missing or invalid fields return `422` with FastAPI field errors (`detail[].loc` starts with `body`). The body is limited to 32 KB. Each IP can submit 10 requests per 10 minutes (`429` after that). The limit is in-memory and resets when the process restarts. CORS allows `POST` and `OPTIONS` from `https://firstringtx.com` and `https://www.firstringtx.com`.
+
+The row is stored before either alert is attempted. SMS and email run after the success response is written, so a provider failure cannot change the `200`. Each call times out after 8 seconds. A hung provider can delay the end of the request by that long:
+
+- SMS uses the existing Twilio settings and goes to `OWNER_ALERT_PHONE`. The message names the contact, business, trade, phone, and plan interest.
+- Email uses Resend (`RESEND_API_KEY`, `ALERT_FROM_EMAIL`) and goes to `OWNER_ALERT_EMAIL` with the full answers. `EMAIL_PROVIDER` defaults to `resend`. Another HTTP provider can be registered in `app/services/email.py`.
+- If SMS or email is not configured, the app logs that and skips it. The stored row records `notifications.sms` and `notifications.email` as `sent`, `skipped`, or `error`.
+
+`GET /api/firstring/signups` returns the stored rows, newest first, and requires the dashboard session.
+
 ## Dashboard login
 
 The demo dashboard and lead-reading API require one shared password from `DASHBOARD_PASSWORD`. Sign in from the demo page, or `POST /api/login` with `{"password": "..."}`. A matching password sets an HttpOnly session cookie. `POST /api/logout` clears it.
@@ -58,6 +78,7 @@ These routes require that cookie:
 - `POST /api/leads/{lead_id}/book`
 - `POST /api/leads/{lead_id}/follow-up`
 - `POST /api/leads/{lead_id}/review-request`
+- `GET /api/firstring/signups`
 
 These stay public:
 
@@ -65,6 +86,7 @@ These stay public:
 - `GET /sales`
 - `GET /` (the page shell; lead counts load only after login)
 - `POST /api/leads`
+- `POST /api/firstring/signup`
 - `POST /api/ai/qualify`
 - `GET /api/sales-offer`
 - `GET /api/sales-pitch`
@@ -109,11 +131,18 @@ TWILIO_FROM_NUMBER=
 DEFAULT_REVIEW_LINK=https://www.google.com/maps
 DATABASE_URL=
 DASHBOARD_PASSWORD=
+OWNER_ALERT_PHONE=
+OWNER_ALERT_EMAIL=
+RESEND_API_KEY=
+ALERT_FROM_EMAIL=
 ```
 
-Set `DASHBOARD_PASSWORD` in the Render dashboard (Environment). `render.yaml` declares it with `sync: false`, so blueprint deploys do not overwrite the value and the password is never committed. The dashboard and lead list stay locked until that variable is set.
+Set the dashboard-managed variables below in the Render dashboard (Environment). `render.yaml` declares each of them with `sync: false`, so a blueprint deploy does not overwrite the value and secrets are never committed:
 
-`DATABASE_URL` is also `sync: false`. Leave it empty to use SQLite on the instance disk, or paste a Postgres connection string. Read the persistence caveats above before relying on SQLite on the free plan.
+- `DASHBOARD_PASSWORD` unlocks the dashboard, the lead list, and `GET /api/firstring/signups`. Those stay locked until it is set.
+- `DATABASE_URL` points at Postgres. Leave it empty to use SQLite on the instance disk. Read the persistence caveats above before relying on SQLite on the free plan.
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` send SMS. `OWNER_ALERT_PHONE` is the number that receives new FirstRing sign-up texts. Leave the owner number unset to skip that alert.
+- `OWNER_ALERT_EMAIL`, `RESEND_API_KEY`, and `ALERT_FROM_EMAIL` send the full sign-up by email through Resend. `ALERT_FROM_EMAIL` must be on a domain verified in Resend. Leave any of the three unset and the email is logged and skipped. Render's free tier blocks outbound SMTP, which is why this uses Resend's HTTP API.
 
 ### Railway or other providers
 
@@ -134,6 +163,8 @@ uvicorn app.main:app --host 0.0.0.0 --port $PORT
 - `GET /api/leads` (login required)
 - `GET /api/leads/{lead_id}` (login required)
 - `POST /api/leads` (public)
+- `POST /api/firstring/signup` (public)
+- `GET /api/firstring/signups` (login required)
 - `POST /api/leads/{lead_id}/book` (login required)
 - `POST /api/leads/{lead_id}/follow-up` (login required)
 - `POST /api/leads/{lead_id}/review-request` (login required)
@@ -176,7 +207,9 @@ Includes:
 - `app/main.py` — app entrypoint and public routes
 - `app/api/routes.py` — API routes
 - `app/auth.py` — dashboard password check and session cookie
-- `app/db/store.py` — SQL lead store (`DATABASE_URL`, SQLite fallback)
+- `app/db/store.py` — SQL lead and FirstRing sign-up store (`DATABASE_URL`, SQLite fallback)
+- `app/services/firstring.py` — sign-up validation, storage, and owner alerts
+- `app/services/email.py` — swappable HTTP email (Resend by default)
 - `app/db/seed.py` — idempotent sample leads
 - `app/services/lead_service.py` — lead workflow logic
 - `static/landing.html` — sales landing page

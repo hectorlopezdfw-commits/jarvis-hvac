@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import String, Text, create_engine, func, select
+from sqlalchemy import String, Text, create_engine, desc, func, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
 
@@ -18,6 +18,16 @@ class Base(DeclarativeBase):
 
 class LeadRow(Base):
     __tablename__ = "leads"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    created_at: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class FirstRingSignupRow(Base):
+    """FirstRing marketing-site sign-ups. Same engine and create_all path as leads."""
+
+    __tablename__ = "firstring_signups"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     created_at: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
@@ -135,6 +145,56 @@ class SqlLeadStore:
                 row.created_at = str(lead["created_at"])
             session.commit()
             return json.loads(row.payload)
+
+    def create_signup(self, signup: dict[str, Any]) -> dict[str, Any]:
+        signup = dict(signup)
+        with self._session() as session:
+            if not signup.get("id"):
+                signup["id"] = self._next_signup_id(session)
+            if "created_at" not in signup:
+                signup["created_at"] = datetime.now(timezone.utc).isoformat()
+            row = FirstRingSignupRow(
+                id=str(signup["id"]),
+                created_at=str(signup.get("created_at") or ""),
+                payload=json.dumps(signup),
+            )
+            session.add(row)
+            session.commit()
+            return json.loads(row.payload)
+
+    def list_signups(self) -> list[dict[str, Any]]:
+        with self._session() as session:
+            rows = session.scalars(
+                select(FirstRingSignupRow).order_by(desc(FirstRingSignupRow.created_at), desc(FirstRingSignupRow.id))
+            ).all()
+            return [json.loads(row.payload) for row in rows]
+
+    def get_signup(self, signup_id: str) -> dict[str, Any] | None:
+        with self._session() as session:
+            row = session.get(FirstRingSignupRow, signup_id)
+            return json.loads(row.payload) if row else None
+
+    def update_signup(self, signup_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+        with self._session() as session:
+            row = session.get(FirstRingSignupRow, signup_id)
+            if row is None:
+                raise KeyError(f"Signup {signup_id} not found")
+            signup = json.loads(row.payload)
+            signup.update(updates)
+            row.payload = json.dumps(signup)
+            if "created_at" in signup:
+                row.created_at = str(signup["created_at"])
+            session.commit()
+            return json.loads(row.payload)
+
+    def _next_signup_id(self, session: Session) -> str:
+        count = session.scalar(select(func.count()).select_from(FirstRingSignupRow)) or 0
+        number = int(count) + 1
+        signup_id = f"signup-{number:04d}"
+        while session.get(FirstRingSignupRow, signup_id) is not None:
+            number += 1
+            signup_id = f"signup-{number:04d}"
+        return signup_id
 
     def _next_lead_id(self, session: Session) -> str:
         count = session.scalar(select(func.count()).select_from(LeadRow)) or 0

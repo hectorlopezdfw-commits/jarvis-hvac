@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Literal
@@ -26,12 +27,15 @@ class Settings:
     review_request_message: str = "Thanks for choosing us! If you have a minute, could you leave us a quick review?"
     database_url: str = ""
     dashboard_password: str = ""
+    owner_alert_phone: str = ""
+    owner_alert_email: str = ""
+    resend_api_key: str = ""
+    alert_from_email: str = ""
+    email_provider: str = "resend"
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    import os
-
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -57,7 +61,23 @@ def get_settings() -> Settings:
         ),
         database_url=os.getenv("DATABASE_URL", ""),
         dashboard_password=os.getenv("DASHBOARD_PASSWORD", ""),
+        owner_alert_phone=os.getenv("OWNER_ALERT_PHONE", ""),
+        owner_alert_email=os.getenv("OWNER_ALERT_EMAIL", ""),
+        resend_api_key=os.getenv("RESEND_API_KEY", ""),
+        alert_from_email=os.getenv("ALERT_FROM_EMAIL", ""),
+        email_provider=os.getenv("EMAIL_PROVIDER", "resend") or "resend",
     )
+
+
+def runtime_setting(env_name: str, fallback: str = "") -> str:
+    """Read an env var at call time, then fall back to the value captured at startup.
+
+    Render injects dashboard env vars before the process starts, and tests patch
+    os.environ after import. Checking the live environment covers both.
+    """
+    if env_name in os.environ:
+        return os.environ[env_name].strip()
+    return (fallback or "").strip()
 
 
 settings = get_settings()

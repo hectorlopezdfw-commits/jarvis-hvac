@@ -20,12 +20,22 @@ services:
         value: ""
       - key: OPENAI_MODEL
         value: gpt-4o-mini
+      # Managed in the Render dashboard. sync: false so a blueprint deploy does not wipe the value.
       - key: TWILIO_ACCOUNT_SID
-        value: ""
+        sync: false
       - key: TWILIO_AUTH_TOKEN
-        value: ""
+        sync: false
       - key: TWILIO_FROM_NUMBER
-        value: ""
+        sync: false
+      # Owner alerts for FirstRing sign-ups. Set in the dashboard. Never commit the values.
+      - key: OWNER_ALERT_PHONE
+        sync: false
+      - key: OWNER_ALERT_EMAIL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: ALERT_FROM_EMAIL
+        sync: false
       - key: DEFAULT_REVIEW_LINK
         value: https://www.google.com/maps
       # Optional external database. Leave blank to use the SQLite fallback.

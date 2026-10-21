@@ -4,16 +4,26 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
 from app.config import settings
+from app.services.firstring import FIRSTRING_CORS_ORIGINS
 
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
     description="AI-powered lead conversion engine for HVAC businesses",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(FIRSTRING_CORS_ORIGINS),
+    allow_methods=["POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept"],
+    max_age=600,
 )
 
 app.include_router(router)
